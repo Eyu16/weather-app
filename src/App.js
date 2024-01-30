@@ -14,6 +14,8 @@ import {
   faEye,
   faLevelUp,
   faThermometer0,
+  faSync,
+  faExclamationTriangle,
 } from "@fortawesome/free-solid-svg-icons";
 // import { faCloud } from "@fortawesome/free-solid-svg-icons";
 import { useEffect, useState } from "react";
@@ -21,15 +23,26 @@ const APIKEY = `9eabaad89aece2b8a5b0aac418e6a26d`;
 export default function App() {
   const [displayedCity, setDisplayedCity] = useState("");
   const [weekPrediction, setWeekPrediction] = useState("");
+  const [isFarhanite, setIsFarhanite] = useState(false);
+  const [overAllError, setOverAllError] = useState(false);
+  const [searchStarted, setSearchStarted] = useState(false);
   return (
     <div className="app">
       <SearchBox
+        weekPrediction={weekPrediction}
         setWeekPrediction={setWeekPrediction}
         setDisplayedCity={setDisplayedCity}
+        isFarhanite={isFarhanite}
+        searchStarted={searchStarted}
+        setSearchStarted={setSearchStarted}
+        setOverAllError={setOverAllError}
       />
       <DisplayBox
         weekPrediction={weekPrediction}
         displayedCity={displayedCity}
+        isFarhanite={isFarhanite}
+        setIsFarhanite={setIsFarhanite}
+        overAllError={overAllError}
       />
     </div>
   );
@@ -37,74 +50,147 @@ export default function App() {
 //
 //
 //
-function SearchBox({ setWeekPrediction, setDisplayedCity }) {
+function SearchBox({
+  weekPrediction,
+  setWeekPrediction,
+  setDisplayedCity,
+  isFarhanite,
+  searchStarted,
+  setSearchStarted,
+  setOverAllError,
+}) {
   const [searching, setSearching] = useState(false);
   const [city, setCity] = useState("");
   const [temprature, setTemprature] = useState(null);
+  const [date, setDate] = useState();
+  const [error, setError] = useState(null);
+  let catchErroMessage;
   const getTemprature = async function (lat, lon) {
     try {
       const response = await fetch(
-        `https://api.openweathermap.org/data/2.5/forecast?lat=${lat}&lon=${lon}&appid=9eabaad89aece2b8a5b0aac418e6a26d`
+        `https://api.openweathermap.org/data/2.5/forecast?lat=${lat}&lon=${lon}&appid=${APIKEY}`
       );
+      if (!response.ok) throw new Error();
       const data = await response.json();
       return data.list;
     } catch (error) {
-      console.log(error);
+      catchErroMessage = `We could not fetch Temprature data from server`;
+      // setError(`Cant fetch Temprature data from server`);
+      // throw new Error(`Cant fetch data from server`);
     }
   };
+  // const converToCelsius = function (array) {};
   const getPosition = async function () {
     try {
       const response = await fetch(
         `http://api.openweathermap.org/geo/1.0/direct?q=${city}&limit=5&appid=${APIKEY}`
       );
-
       const data = await response.json();
+      if (!data.length) {
+        throw new Error(`We could not find a city called ${city}`);
+      }
+      console.log(`hey`);
       const { lat, lon } = data[0];
-      console.log(lat, lon);
       return { lat, lon };
     } catch (error) {
-      throw error;
+      // console.log(`error at get position`);
+      catchErroMessage = error.message;
+      // setError(error.message);
+      // throw error;
     }
   };
   const getCoords = async function () {
-    const { lat, lon } = await getPosition();
-    const datas = await getTemprature(lat, lon);
-    console.log(datas);
-    const dataModified = datas.map((data) => {
-      const timeStamp = new Date(data.dt_txt).getTime();
-      return { ...data, timeStamp };
-    });
+    try {
+      const { lat, lon } = await getPosition();
+      const datas = await getTemprature(lat, lon);
+      const dataModified = datas.map((data) => {
+        const timeStamp = new Date(data.dt_txt).getTime();
+        return { ...data, timeStamp };
+      });
 
-    const getDay = (timestamp) => {
-      const date = new Date(timestamp); // Convert seconds to milliseconds
-      return date.toISOString().split("T")[0]; // Extract YYYY-MM-DD
-    };
+      const getDay = (timestamp) => {
+        const date = new Date(timestamp); // Convert seconds to milliseconds
+        return date.toISOString().split("T")[0]; // Extract YYYY-MM-DD
+      };
 
-    const groupedData = dataModified.reduce((acc, data) => {
-      const day = getDay(data.timeStamp);
-      acc[day] = acc[day] || [];
-      acc[day].push(data);
-      return acc;
-    }, {});
-    const finallArray = [];
-    for (const items in groupedData) {
-      finallArray.push(groupedData[items][0]);
+      const groupedData = dataModified.reduce((acc, data) => {
+        const day = getDay(data.timeStamp);
+        acc[day] = acc[day] || [];
+        acc[day].push(data);
+        return acc;
+      }, {});
+      const finallArray = [];
+      for (const items in groupedData) {
+        finallArray.push(groupedData[items][0]);
+      }
+      finallArray.splice(0, 1);
+      setWeekPrediction(() => [...finallArray]);
+      setTemprature(Math.round(finallArray[0].main.temp - 273.5));
+      const date = new Date(finallArray[0].timeStamp);
+      const options = {
+        hour: "numeric",
+        minute: "numeric",
+      };
+      const formatedDate = new Intl.DateTimeFormat("us-GB", options).format(
+        date
+      );
+      setDate(formatedDate);
+      setSearching(false);
+    } catch (error) {
+      setError(catchErroMessage);
+      setOverAllError(() => true);
+      // setOverAllError(true);
+      // setError(`We could not find a city called ${city}`);
     }
-    finallArray.splice(0, 1);
-    setWeekPrediction(() => [...finallArray]);
-    setTemprature(Math.round(finallArray[0].main.temp - 273.5));
-    setSearching(false);
   };
+
   const handleSubmit = function (event) {
     event.preventDefault();
-    getCoords();
-    setDisplayedCity(city);
-    setSearching(true);
+    try {
+      setSearchStarted(() => true);
+      getCoords();
+      setDisplayedCity(city);
+      setSearching(true);
+      setError(null);
+      setOverAllError(false);
+    } catch (error) {
+      setError(`We could not find a city called ${city} hahahha`);
+    }
   };
+
+  if (error)
+    return (
+      <div className="search-box">
+        <form className="search-form" onSubmit={handleSubmit}>
+          <input
+            required
+            value={city}
+            onChange={(event) => {
+              setCity(event.target.value);
+              setTemprature(null);
+            }}
+            className="search-input"
+            type="text"
+          ></input>
+          <button className="seach-btn">
+            <FontAwesomeIcon
+              icon={faMagnifyingGlass}
+              style={{ fontSize: "2rem", color: "#fff" }}
+            />
+          </button>
+        </form>
+        <div className="search-description">
+          <FontAwesomeIcon icon={faExclamationTriangle} />
+          {error}
+        </div>
+      </div>
+    );
+
   return (
     <div className="search-box">
       <form className="search-form" onSubmit={handleSubmit}>
         <input
+          required
           value={city}
           onChange={(event) => {
             setCity(event.target.value);
@@ -124,13 +210,16 @@ function SearchBox({ setWeekPrediction, setDisplayedCity }) {
         {!searching && city && temprature && (
           <div className="temprature-main">{temprature}°c</div>
         )}
-        <div className="time">12:30 PM</div>
+        <div className="time">{date}</div>
         {!searching && city && temprature && <div>{city}</div>}
         {searching && <div>Loading...</div>}
       </div>
       <Currently
+        weekPrediction={weekPrediction}
         setWeekPrediction={setWeekPrediction}
         setDisplayedCity={setDisplayedCity}
+        isFarhanite={isFarhanite}
+        searchStarted={searchStarted}
       />
       <footer>
         <a href="https://github.com/Eyu16" target="blank">
@@ -141,41 +230,42 @@ function SearchBox({ setWeekPrediction, setDisplayedCity }) {
   );
 }
 
-function Currently({ setWeekPrediction, setDisplayedCity }) {
+function Currently({
+  weekPrediction,
+  setWeekPrediction,
+  setDisplayedCity,
+  isFarhanite,
+  searchStarted,
+}) {
   const [currentCity, setCurrentCity] = useState("");
   const [currentCityTemp, setCurrentCityTemp] = useState(null);
   const isReady = currentCity && currentCityTemp;
   const getTemprature = async function (lat, lon) {
-    try {
-      const response = await fetch(
-        `https://api.openweathermap.org/data/2.5/forecast?lat=${lat}&lon=${lon}&appid=9eabaad89aece2b8a5b0aac418e6a26d`
-      );
+    console.log(`temp`);
+    const response = await fetch(
+      `https://api.openweathermap.org/data/2.5/forecast?lat=${lat}&lon=${lon}&appid=9eabaad89aece2b8a5b0aac418e6a26d`
+    );
 
-      const data = await response.json();
-      return data.list;
-    } catch (error) {
-      console.log(error);
-    }
+    const data = await response.json();
+    return data.list;
   };
 
   const getPosition = async function () {
-    try {
-      return await new Promise((resolve, reject) => {
-        navigator.geolocation.getCurrentPosition(
-          (position) => resolve(position),
-          (error) => reject(error)
-        );
-      });
-    } catch (error) {
-      throw error;
-    }
+    return await new Promise((resolve, reject) => {
+      navigator.geolocation.getCurrentPosition(
+        (position) => resolve(position),
+        (error) => reject(error)
+      );
+    });
   };
 
   const getCity = async function () {
+    console.log(`city`);
     const data = await getPosition();
+    console.log(data);
     const { latitude: lat, longitude: lon } = data.coords;
     const response = await fetch(
-      `http://api.openweathermap.org/geo/1.0/reverse?lat=${lat}&lon=${lon}&limit=1&appid=${APIKEY}`
+      `https://api.openweathermap.org/geo/1.0/reverse?lat=${lat}&lon=${lon}&limit=1&appid=${APIKEY}`
     );
     const data2 = await response.json();
     const { name: city } = data2[0];
@@ -184,8 +274,9 @@ function Currently({ setWeekPrediction, setDisplayedCity }) {
   const fetchData = async function () {
     const cityCords = await getCity();
     setCurrentCity(cityCords.city);
-    setDisplayedCity(cityCords.city);
+    if (!searchStarted) setDisplayedCity(cityCords.city);
     const datas = await getTemprature(cityCords.lat, cityCords.lon);
+
     const dataModified = datas.map((data) => {
       const timeStamp = new Date(data.dt_txt).getTime();
       return { ...data, timeStamp };
@@ -206,7 +297,9 @@ function Currently({ setWeekPrediction, setDisplayedCity }) {
       finallArray.push(groupedData[items][0]);
     }
     finallArray.splice(0, 1);
-    setWeekPrediction(() => [...finallArray]);
+    if (!searchStarted) {
+      setWeekPrediction(() => [...finallArray]);
+    }
     setCurrentCityTemp(Math.round(finallArray[0].main.temp - 273.5));
   };
   useEffect(() => {
@@ -228,16 +321,45 @@ function Currently({ setWeekPrediction, setDisplayedCity }) {
     </div>
   );
 }
-function DisplayBox({ weekPrediction, displayedCity }) {
+function DisplayBox({
+  weekPrediction,
+  displayedCity,
+  isFarhanite,
+  setIsFarhanite,
+  overAllError,
+}) {
   const [details, setDetails] = useState(weekPrediction[0]);
   useEffect(() => {
     if (weekPrediction && weekPrediction.length > 0) {
       setDetails(weekPrediction[0]);
     }
   }, [weekPrediction]);
-  if (!weekPrediction.length) return;
+  if (overAllError)
+    return (
+      <div className="display-box waiting-message">
+        <FontAwesomeIcon icon={faExclamationTriangle} /> We couldnot load the
+        details
+      </div>
+    );
+  if (!weekPrediction.length)
+    return (
+      <div className="display-box waiting-message">
+        Loading the current location status...
+      </div>
+    );
   return (
     <div className="display-box">
+      <div className="sync-div">
+        <a style={{ position: "absolute" }} href="">
+          <FontAwesomeIcon icon={faSync} className="sync" />
+        </a>
+        <div className="display-mode">
+          <button>Dark</button>
+          <button onClick={() => setIsFarhanite((isFarhanite) => !isFarhanite)}>
+            °{isFarhanite ? "F" : "C"}
+          </button>
+        </div>
+      </div>
       <WeaksBox weekPrediction={weekPrediction} setDetails={setDetails} />
       <Deatials
         details={details}
@@ -261,7 +383,7 @@ function WeaksBox({ weekPrediction, setDetails }) {
 function WeatherCard({ data, setDetails }) {
   const temprature = Math.round(data.main.temp - 273.5);
   const chooseIcon = function () {
-    if (temprature < 0) {
+    if (temprature <= 0) {
       return faSnowflake;
     }
     if (temprature > 0 && temprature <= 5) {

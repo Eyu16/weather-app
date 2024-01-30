@@ -20,14 +20,54 @@ body {
   background-color: rgba(255, 255, 255, 0.2);
   display: grid;
   grid-template-columns: 25rem 1fr;
+  position: relative;
 }
 .search-box {
   min-height: 100%;
   padding: 8rem 1rem;
   padding-bottom: 0;
   background-color: rgba(238, 238, 238, 0.4);
-  position: relative;
   overflow: hidden;
+  position: relative;
+}
+.sync-div {
+  padding-top: 1rem;
+  padding-left: 1rem;
+}
+.sync {
+  padding: 0.5rem;
+  font-size: 2.5rem;
+  transition: all 0.1s;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  transition: all 0.3s;
+}
+.sync:active {
+  transform: scale(0.8);
+}
+.display-mode {
+  padding-top: 1rem;
+  padding-right: 1rem;
+  position: absolute;
+  right: 0;
+  display: flex;
+  gap: 5rem;
+}
+.display-mode button {
+  font-size: 2rem;
+  padding: 0.5rem 1rem;
+  font-weight: 600;
+  border: none;
+  background-color: transparent;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+.display-mode button:hover,
+.sync:hover {
+  color: #fff;
+  background-color: #33a0d6;
+  border-radius: 1rem;
 }
 .search-form {
   padding-top: 3rem;
@@ -76,8 +116,17 @@ a:visited {
   grid-template-columns: 1fr;
   grid-template-rows: 1fr 1.5fr;
 }
+.waiting-message {
+  width: 100%;
+  height: 70rem;
+  font-size: 2.5rem;
+  font-weight: 600;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
 .weaks-summary {
-  padding: 5rem;
+  padding: 1rem 5rem;
   display: flex;
   justify-content: space-between;
 }
