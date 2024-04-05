@@ -1,3 +1,4 @@
+// BN0T894LHUZ6
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 // import { faCoffee } from "@fortawesome/free-solid-svg-icons";
 import { faMagnifyingGlass } from "@fortawesome/free-solid-svg-icons";
@@ -20,6 +21,7 @@ import {
 // import { faCloud } from "@fortawesome/free-solid-svg-icons";
 import { useEffect, useState } from "react";
 const APIKEY = `9eabaad89aece2b8a5b0aac418e6a26d`;
+const APIKEY1 = `BN0T894LHUZ6`;
 export default function App() {
   const [displayedCity, setDisplayedCity] = useState("");
   const [weekPrediction, setWeekPrediction] = useState("");
@@ -79,6 +81,22 @@ function SearchBox({
       // throw new Error(`Cant fetch data from server`);
     }
   };
+  // get specififc time
+  const getHoursMinutes = async function (lat, lon) {
+    const response = await fetch(
+      `http://api.timezonedb.com/v2.1/get-time-zone?key=${APIKEY1}&format=json&by=position&lat=${lat}&lng=${lon}`
+    );
+    const data = await response.json();
+    const newDate = new Date(data.formatted);
+    const hours = newDate.getHours();
+    const minutes = String(newDate.getMinutes()).padStart(2, "0");
+    const AMPM = +hours >= 12 ? "PM" : "AM";
+    const specific_time = `${
+      hours >= 12 ? String(hours - 12) : hours
+    }:${minutes} ${AMPM}`;
+    setDate(specific_time);
+    return data;
+  };
   // const converToCelsius = function (array) {};
   const getPosition = async function () {
     try {
@@ -91,6 +109,7 @@ function SearchBox({
       }
       console.log(`hey`);
       const { lat, lon } = data[0];
+      getHoursMinutes(lat, lon);
       return { lat, lon };
     } catch (error) {
       // console.log(`error at get position`);
@@ -102,6 +121,7 @@ function SearchBox({
   const getCoords = async function () {
     try {
       const { lat, lon } = await getPosition();
+
       const datas = await getTemprature(lat, lon);
       const dataModified = datas.map((data) => {
         const timeStamp = new Date(data.dt_txt).getTime();
@@ -126,15 +146,17 @@ function SearchBox({
       finallArray.splice(0, 1);
       setWeekPrediction(() => [...finallArray]);
       setTemprature(Math.round(finallArray[0].main.temp - 273.5));
-      const date = new Date(finallArray[0].timeStamp);
-      const options = {
-        hour: "numeric",
-        minute: "numeric",
-      };
-      const formatedDate = new Intl.DateTimeFormat("us-GB", options).format(
-        date
-      );
-      setDate(formatedDate);
+      //
+      // const date = new Date(finallArray[0].timeStamp);
+      // const options = {
+      //   hour: "numeric",
+      //   minute: "numeric",
+      // };
+      // const formatedDate = new Intl.DateTimeFormat("us-GB", options).format(
+      //   date
+      // );
+      // setDate(formatedDate);
+      //
       setSearching(false);
     } catch (error) {
       setError(catchErroMessage);
@@ -153,6 +175,7 @@ function SearchBox({
       setSearching(true);
       setError(null);
       setOverAllError(false);
+      setCity("");
     } catch (error) {
       setError(`We could not find a city called ${city} hahahha`);
     }
