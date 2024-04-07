@@ -327,7 +327,8 @@ function Currently({
   };
   useEffect(() => {
     fetchData();
-  }, []);
+  });
+
   if (!isReady)
     return (
       <div className="currently not-ready">
@@ -373,7 +374,10 @@ function DisplayBox({
   return (
     <div className="display-box">
       <div className="sync-div">
-        <a style={{ position: "absolute" }} href="">
+        <a
+          style={{ position: "absolute" }}
+          href="https://github.com/Eyu16/weather-app"
+        >
           <FontAwesomeIcon icon={faSync} className="sync" />
         </a>
         <div className="display-mode">
