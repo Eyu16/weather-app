@@ -327,7 +327,7 @@ function Currently({
   };
   useEffect(() => {
     fetchData();
-  });
+  }, []);
 
   if (!isReady)
     return (
