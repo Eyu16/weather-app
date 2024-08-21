@@ -19,7 +19,7 @@ import {
   faExclamationTriangle,
 } from "@fortawesome/free-solid-svg-icons";
 // import { faCloud } from "@fortawesome/free-solid-svg-icons";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 const APIKEY = `9eabaad89aece2b8a5b0aac418e6a26d`;
 const APIKEY1 = `BN0T894LHUZ6`;
 export default function App() {
@@ -263,7 +263,7 @@ function Currently({
   const [currentCity, setCurrentCity] = useState("");
   const [currentCityTemp, setCurrentCityTemp] = useState(null);
   const isReady = currentCity && currentCityTemp;
-  const getTemprature = async function (lat, lon) {
+  const getTemprature = useCallback(async function (lat, lon) {
     console.log(`temp`);
     const response = await fetch(
       `https://api.openweathermap.org/data/2.5/forecast?lat=${lat}&lon=${lon}&appid=9eabaad89aece2b8a5b0aac418e6a26d`
@@ -271,63 +271,69 @@ function Currently({
 
     const data = await response.json();
     return data.list;
-  };
+  }, []);
 
-  const getPosition = async function () {
+  const getPosition = useCallback(async function () {
     return await new Promise((resolve, reject) => {
       navigator.geolocation.getCurrentPosition(
         (position) => resolve(position),
         (error) => reject(error)
       );
     });
-  };
+  }, []);
 
-  const getCity = async function () {
-    console.log(`city`);
-    const data = await getPosition();
-    console.log(data);
-    const { latitude: lat, longitude: lon } = data.coords;
-    const response = await fetch(
-      `https://api.openweathermap.org/geo/1.0/reverse?lat=${lat}&lon=${lon}&limit=1&appid=${APIKEY}`
-    );
-    const data2 = await response.json();
-    const { name: city } = data2[0];
-    return { city, lat, lon };
-  };
-  const fetchData = async function () {
-    const cityCords = await getCity();
-    setCurrentCity(cityCords.city);
-    if (!searchStarted) setDisplayedCity(cityCords.city);
-    const datas = await getTemprature(cityCords.lat, cityCords.lon);
+  const getCity = useCallback(
+    async function () {
+      console.log(`city`);
+      const data = await getPosition();
+      console.log(data);
+      const { latitude: lat, longitude: lon } = data.coords;
+      const response = await fetch(
+        `https://api.openweathermap.org/geo/1.0/reverse?lat=${lat}&lon=${lon}&limit=1&appid=${APIKEY}`
+      );
+      const data2 = await response.json();
+      const { name: city } = data2[0];
+      return { city, lat, lon };
+    },
+    [getPosition]
+  );
+  const fetchData = useCallback(
+    async function () {
+      const cityCords = await getCity();
+      setCurrentCity(cityCords.city);
+      if (!searchStarted) setDisplayedCity(cityCords.city);
+      const datas = await getTemprature(cityCords.lat, cityCords.lon);
 
-    const dataModified = datas.map((data) => {
-      const timeStamp = new Date(data.dt_txt).getTime();
-      return { ...data, timeStamp };
-    });
+      const dataModified = datas.map((data) => {
+        const timeStamp = new Date(data.dt_txt).getTime();
+        return { ...data, timeStamp };
+      });
 
-    const getDay = (timestamp) => {
-      const date = new Date(timestamp); // Convert seconds to milliseconds
-      return date.toISOString().split("T")[0]; // Extract YYYY-MM-DD
-    };
-    const groupedData = dataModified.reduce((acc, data) => {
-      const day = getDay(data.timeStamp);
-      acc[day] = acc[day] || [];
-      acc[day].push(data);
-      return acc;
-    }, {});
-    const finallArray = [];
-    for (const items in groupedData) {
-      finallArray.push(groupedData[items][0]);
-    }
-    finallArray.splice(0, 1);
-    if (!searchStarted) {
-      setWeekPrediction(() => [...finallArray]);
-    }
-    setCurrentCityTemp(Math.round(finallArray[0].main.temp - 273.5));
-  };
+      const getDay = (timestamp) => {
+        const date = new Date(timestamp); // Convert seconds to milliseconds
+        return date.toISOString().split("T")[0]; // Extract YYYY-MM-DD
+      };
+      const groupedData = dataModified.reduce((acc, data) => {
+        const day = getDay(data.timeStamp);
+        acc[day] = acc[day] || [];
+        acc[day].push(data);
+        return acc;
+      }, {});
+      const finallArray = [];
+      for (const items in groupedData) {
+        finallArray.push(groupedData[items][0]);
+      }
+      finallArray.splice(0, 1);
+      if (!searchStarted) {
+        setWeekPrediction(() => [...finallArray]);
+      }
+      setCurrentCityTemp(Math.round(finallArray[0].main.temp - 273.5));
+    },
+    [getCity, getTemprature, searchStarted, setDisplayedCity, setWeekPrediction]
+  );
   useEffect(() => {
     fetchData();
-  }, []);
+  }, [fetchData]);
 
   if (!isReady)
     return (
