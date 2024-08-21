@@ -84,7 +84,7 @@ function SearchBox({
   // get specififc time
   const getHoursMinutes = async function (lat, lon) {
     const response = await fetch(
-      `http://api.timezonedb.com/v2.1/get-time-zone?key=${APIKEY1}&format=json&by=position&lat=${lat}&lng=${lon}`
+      `https://api.timezonedb.com/v2.1/get-time-zone?key=${APIKEY1}&format=json&by=position&lat=${lat}&lng=${lon}`
     );
     const data = await response.json();
     const newDate = new Date(data.formatted);
