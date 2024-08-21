@@ -101,7 +101,7 @@ function SearchBox({
   const getPosition = async function () {
     try {
       const response = await fetch(
-        `http://api.openweathermap.org/geo/1.0/direct?q=${city}&limit=5&appid=${APIKEY}`
+        `https://api.openweathermap.org/geo/1.0/direct?q=${city}&limit=5&appid=${APIKEY}`
       );
       const data = await response.json();
       if (!data.length) {
